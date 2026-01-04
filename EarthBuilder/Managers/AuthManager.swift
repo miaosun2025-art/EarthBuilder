@@ -408,13 +408,58 @@ class AuthManager: ObservableObject {
     }
 
     /// 使用 Google 登录
-    /// TODO: 实现 Google 登录逻辑
     func signInWithGoogle() async {
-        // TODO: 实现 Google Sign In
-        // 1. 获取 Google ID Token
-        // 2. 调用 supabase.auth.signInWithIdToken(provider: .google, idToken:)
-        // 3. 更新认证状态
-        errorMessage = "Google 登录功能即将推出"
+        print("🟢 [认证] 开始 Google 登录流程")
+        isLoading = true
+        errorMessage = nil
+
+        do {
+            // 步骤 1: 使用 Google Sign In 获取凭证
+            let googleHelper = GoogleSignInHelper()
+            let (idToken, accessToken) = try await googleHelper.signIn()
+
+            print("🟢 [认证] 成功获取 Google 凭证")
+            print("📊 [认证] ID Token: \(idToken.prefix(20))...")
+            print("📊 [认证] Access Token: \(accessToken.prefix(20))...")
+
+            // 步骤 2: 使用 Google 凭证登录 Supabase
+            print("🟢 [认证] 调用 Supabase signInWithIdToken...")
+
+            let session = try await supabase.auth.signInWithIdToken(
+                credentials: .init(
+                    provider: .google,
+                    idToken: idToken,
+                    accessToken: accessToken
+                )
+            )
+
+            print("✅ [认证] Supabase 登录成功")
+            print("📊 [认证] 用户 ID: \(session.user.id)")
+            print("📊 [认证] 用户邮箱: \(session.user.email ?? "无邮箱")")
+
+            // 步骤 3: 更新认证状态
+            isAuthenticated = true
+            needsPasswordSetup = false
+
+            // 获取用户信息
+            let authUser = session.user
+            currentUser = User(
+                id: authUser.id,
+                email: authUser.email,
+                createdAt: authUser.createdAt
+            )
+
+            errorMessage = nil
+            print("✅ [认证] Google 登录流程完成")
+
+        } catch {
+            let errorDesc = error.localizedDescription
+            print("❌ [认证] Google 登录失败: \(errorDesc)")
+            errorMessage = "Google 登录失败: \(errorDesc)"
+            isAuthenticated = false
+        }
+
+        isLoading = false
     }
 
     // MARK: - Session Management

@@ -9,6 +9,7 @@ import SwiftUI
 
 @main
 struct EarthBuilderApp: App {
+    @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     @StateObject private var authManager = AuthManager()
 
     var body: some Scene {

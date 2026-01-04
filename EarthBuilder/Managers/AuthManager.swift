@@ -713,6 +713,13 @@ class AuthManager: ObservableObject {
     /// 从会话对象更新用户信息
     /// - Parameter session: Supabase 会话对象
     private func updateUserFromSession(_ session: Session) {
+        // 检查会话是否过期
+        if session.isExpired {
+            print("⚠️ [认证] 会话已过期，需要重新登录")
+            handleSessionExpired()
+            return
+        }
+
         let authUser = session.user
 
         currentUser = User(

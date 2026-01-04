@@ -3,6 +3,7 @@ import Supabase
 
 struct ProfileTabView: View {
     @EnvironmentObject var authManager: AuthManager
+    @StateObject private var languageManager = LanguageManager.shared
     @State private var showLogoutConfirmation = false
     @State private var showDeleteAccountDialog = false
     @State private var deleteConfirmationText = ""
@@ -120,6 +121,19 @@ struct ProfileTabView: View {
                                     icon: "info.circle",
                                     title: "关于",
                                     subtitle: "版本信息、用户协议"
+                                )
+                            }
+
+                            Divider()
+                                .background(Color.gray.opacity(0.2))
+                                .padding(.leading, 60)
+
+                            // 语言设置
+                            NavigationLink(destination: LanguageSettingsView()) {
+                                settingRow(
+                                    icon: "globe",
+                                    title: "语言 / Language",
+                                    subtitle: languageManager.currentLanguage.displayName
                                 )
                             }
                         }
@@ -317,11 +331,12 @@ struct DeleteAccountConfirmationView: View {
     @Binding var isPresented: Bool
     @Binding var confirmationText: String
     let onConfirm: () -> Void
+    @StateObject private var languageManager = LanguageManager.shared
 
     // 根据当前语言环境确定正确的确认文本
     private var expectedConfirmationText: String {
-        let currentLanguage = Locale.current.language.languageCode?.identifier ?? "zh"
-        return currentLanguage.starts(with: "zh") ? "删除" : "DELETE"
+        let langCode = languageManager.currentLanguageCode
+        return langCode.starts(with: "zh") ? "删除" : "DELETE"
     }
 
     // 检查用户输入是否匹配（支持中英文）

@@ -491,12 +491,12 @@
         }
       }
     },
-    "请输入 \"删除\" 以确认" : {
+    "请输入 \"%@\" 以确认" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Please type \"DELETE\" to confirm"
+            "value" : "Please type \"%@\" to confirm"
           }
         }
       }

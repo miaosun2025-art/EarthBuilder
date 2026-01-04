@@ -10,10 +10,12 @@
 		0AA97FE42F092D1F007CF980 /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = 0AA97FE32F092D1F007CF980 /* Supabase */; };
 		0AA980BD2F0A5B27007CF980 /* GoogleSignIn in Frameworks */ = {isa = PBXBuildFile; productRef = 0AA980BC2F0A5B27007CF980 /* GoogleSignIn */; };
 		0AA980BF2F0A5B27007CF980 /* GoogleSignInSwift in Frameworks */ = {isa = PBXBuildFile; productRef = 0AA980BE2F0A5B27007CF980 /* GoogleSignInSwift */; };
+		0AA980C92F0A71DB007CF980 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 0AA980C82F0A71DB007CF980 /* Localizable.xcstrings */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		0AA4B41F2F090EAB00DF3F96 /* EarthBuilder.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = EarthBuilder.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		0AA980C82F0A71DB007CF980 /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -54,6 +56,7 @@
 		0AA4B4162F090EAB00DF3F96 = {
 			isa = PBXGroup;
 			children = (
+				0AA980C82F0A71DB007CF980 /* Localizable.xcstrings */,
 				0AA4B4212F090EAB00DF3F96 /* EarthBuilder */,
 				0AA4B4202F090EAB00DF3F96 /* Products */,
 			);
@@ -111,11 +114,12 @@
 				};
 			};
 			buildConfigurationList = 0AA4B41A2F090EAB00DF3F96 /* Build configuration list for PBXProject "EarthBuilder" */;
-			developmentRegion = en;
+			developmentRegion = "zh-Hans";
 			hasScannedForEncodings = 0;
 			knownRegions = (
 				en,
 				Base,
+				"zh-Hans",
 			);
 			mainGroup = 0AA4B4162F090EAB00DF3F96;
 			minimizedProjectReferenceProxies = 1;
@@ -138,6 +142,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				0AA980C92F0A71DB007CF980 /* Localizable.xcstrings in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -211,6 +216,7 @@
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 			};
 			name = Debug;
@@ -265,6 +271,7 @@
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_EMIT_LOC_STRINGS = YES;
 			};
 			name = Release;
 		};

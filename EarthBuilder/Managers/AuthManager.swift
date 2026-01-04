@@ -501,13 +501,7 @@ class AuthManager: ObservableObject {
 
         do {
             // 获取当前会话的 access token
-            guard let session = try await supabase.auth.session else {
-                print("❌ [认证] 未找到有效会话")
-                errorMessage = "请先登录"
-                isLoading = false
-                return false
-            }
-
+            let session = try await supabase.auth.session
             let accessToken = session.accessToken
 
             // 调用 Edge Function

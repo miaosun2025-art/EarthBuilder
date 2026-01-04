@@ -3,7 +3,6 @@ import Supabase
 
 struct ProfileTabView: View {
     @EnvironmentObject var authManager: AuthManager
-    @StateObject private var languageManager = LanguageManager.shared
     @State private var showLogoutConfirmation = false
     @State private var showDeleteAccountDialog = false
     @State private var deleteConfirmationText = ""
@@ -121,19 +120,6 @@ struct ProfileTabView: View {
                                     icon: "info.circle",
                                     title: "关于",
                                     subtitle: "版本信息、用户协议"
-                                )
-                            }
-
-                            Divider()
-                                .background(Color.gray.opacity(0.2))
-                                .padding(.leading, 60)
-
-                            // 语言设置
-                            NavigationLink(destination: LanguageSettingsView()) {
-                                settingRow(
-                                    icon: "globe",
-                                    title: "语言 / Language",
-                                    subtitle: languageManager.currentLanguage.displayName
                                 )
                             }
                         }

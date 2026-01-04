@@ -64,6 +64,9 @@ class LanguageManager: ObservableObject {
     /// 当前语言的 Bundle
     @Published private(set) var languageBundle: Bundle = Bundle.main
 
+    /// 刷新触发器 - 用于强制刷新 UI
+    @Published var refreshID: UUID = UUID()
+
     // MARK: - Initialization
 
     private init() {
@@ -132,6 +135,10 @@ class LanguageManager: ObservableObject {
             self.languageBundle = Bundle.main
             print("⚠️ [语言] 未找到语言 Bundle: \(languageCode)，使用主 Bundle")
         }
+
+        // 触发 UI 刷新
+        refreshID = UUID()
+        print("🔄 [语言] 触发 UI 刷新")
     }
 }
 

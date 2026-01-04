@@ -12,11 +12,11 @@ struct LanguageSettingsView: View {
             VStack(spacing: 20) {
                 // 说明文字
                 VStack(spacing: 8) {
-                    Text("选择语言")
+                    Text("选择语言".localized)
                         .font(.system(size: 16, weight: .medium))
                         .foregroundColor(.white)
 
-                    Text("切换后立即生效")
+                    Text("切换后立即生效".localized)
                         .font(.system(size: 14))
                         .foregroundColor(.gray)
                 }
@@ -55,20 +55,21 @@ struct LanguageSettingsView: View {
                     HStack(spacing: 8) {
                         Image(systemName: "info.circle")
                             .font(.system(size: 14))
-                        Text("语言设置会立即应用到整个应用")
+                        Text("语言设置会立即应用到整个应用".localized)
                             .font(.system(size: 14))
                     }
                     .foregroundColor(.gray)
 
-                    Text("无需重启应用")
+                    Text("无需重启应用".localized)
                         .font(.system(size: 14))
                         .foregroundColor(.gray.opacity(0.8))
                 }
                 .padding(.bottom, 30)
             }
         }
-        .navigationTitle("语言设置 / Language")
+        .navigationTitle("语言设置 / Language".localized)
         .navigationBarTitleDisplayMode(.inline)
+        .id(languageManager.refreshID) // 强制刷新
     }
 
     // MARK: - Helper Views
@@ -101,7 +102,7 @@ struct LanguageSettingsView: View {
 
                 // 当前使用的语言代码
                 if language == .system {
-                    Text("当前: \(systemLanguageDisplayName)")
+                    Text("当前: %@".localized(systemLanguageDisplayName))
                         .font(.system(size: 14))
                         .foregroundColor(.gray)
                 }

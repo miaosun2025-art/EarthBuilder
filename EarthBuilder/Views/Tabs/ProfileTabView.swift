@@ -4,6 +4,10 @@ import Supabase
 struct ProfileTabView: View {
     @EnvironmentObject var authManager: AuthManager
     @State private var showLogoutConfirmation = false
+    @State private var showDeleteAccountDialog = false
+    @State private var deleteConfirmationText = ""
+    @State private var showDeleteAccountAlert = false
+    @State private var deleteAccountError: String?
 
     var body: some View {
         NavigationView {
@@ -156,6 +160,31 @@ struct ProfileTabView: View {
                         }
                         .disabled(authManager.isLoading)
                         .padding(.horizontal, 20)
+
+                        // 删除账户按钮
+                        Button(action: {
+                            print("🔴 [设置] 用户点击删除账户按钮")
+                            showDeleteAccountDialog = true
+                        }) {
+                            HStack(spacing: 12) {
+                                Image(systemName: "trash.circle")
+                                    .font(.system(size: 18))
+
+                                Text("删除账户")
+                                    .font(.system(size: 18, weight: .semibold))
+                            }
+                            .foregroundColor(.white.opacity(0.8))
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 54)
+                            .background(Color.white.opacity(0.1))
+                            .cornerRadius(27)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 27)
+                                    .stroke(Color.red.opacity(0.5), lineWidth: 1)
+                            )
+                        }
+                        .disabled(authManager.isLoading)
+                        .padding(.horizontal, 20)
                         .padding(.bottom, 40)
                     }
                 }
@@ -171,6 +200,56 @@ struct ProfileTabView: View {
                 }
             } message: {
                 Text("确定要退出登录吗？")
+            }
+            .sheet(isPresented: $showDeleteAccountDialog) {
+                DeleteAccountConfirmationView(
+                    isPresented: $showDeleteAccountDialog,
+                    confirmationText: $deleteConfirmationText,
+                    onConfirm: {
+                        print("📝 [设置] 用户确认删除账户")
+                        Task {
+                            await performDeleteAccount()
+                        }
+                    }
+                )
+                .presentationDetents([.medium])
+                .presentationDragIndicator(.visible)
+            }
+            .alert("删除账户失败", isPresented: $showDeleteAccountAlert) {
+                Button("确定", role: .cancel) {
+                    deleteAccountError = nil
+                }
+            } message: {
+                if let error = deleteAccountError {
+                    Text(error)
+                }
+            }
+        }
+    }
+
+    // MARK: - Delete Account
+
+    /// 执行删除账户操作
+    private func performDeleteAccount() async {
+        print("🔴 [设置] 开始执行删除账户操作")
+
+        let success = await authManager.deleteAccount()
+
+        if success {
+            print("✅ [设置] 账户删除成功")
+            // 关闭对话框
+            await MainActor.run {
+                showDeleteAccountDialog = false
+                deleteConfirmationText = ""
+            }
+        } else {
+            print("❌ [设置] 账户删除失败")
+            // 显示错误信息
+            await MainActor.run {
+                deleteAccountError = authManager.errorMessage ?? "删除账户失败，请稍后重试"
+                showDeleteAccountAlert = true
+                showDeleteAccountDialog = false
+                deleteConfirmationText = ""
             }
         }
     }
@@ -229,6 +308,168 @@ struct ProfileTabView: View {
         formatter.dateFormat = "yyyy年MM月dd日"
         formatter.locale = Locale(identifier: "zh_CN")
         return formatter.string(from: date)
+    }
+}
+
+// MARK: - Delete Account Confirmation View
+
+struct DeleteAccountConfirmationView: View {
+    @Binding var isPresented: Bool
+    @Binding var confirmationText: String
+    let onConfirm: () -> Void
+
+    var body: some View {
+        NavigationView {
+            ZStack {
+                // 背景
+                Color(red: 0.11, green: 0.12, blue: 0.15).ignoresSafeArea()
+
+                VStack(spacing: 24) {
+                    // 警告图标
+                    ZStack {
+                        Circle()
+                            .fill(Color.red.opacity(0.2))
+                            .frame(width: 80, height: 80)
+
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .font(.system(size: 40))
+                            .foregroundColor(.red)
+                    }
+                    .padding(.top, 20)
+
+                    // 标题
+                    Text("删除账户")
+                        .font(.system(size: 24, weight: .bold))
+                        .foregroundColor(.white)
+
+                    // 警告文字
+                    VStack(spacing: 12) {
+                        Text("此操作无法撤销！")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundColor(.red)
+
+                        Text("删除账户后，您的所有数据将被永久删除，包括：")
+                            .font(.system(size: 14))
+                            .foregroundColor(.gray)
+                            .multilineTextAlignment(.center)
+
+                        VStack(alignment: .leading, spacing: 8) {
+                            Label("个人资料和设置", systemImage: "person.fill")
+                            Label("所有游戏进度", systemImage: "gamecontroller.fill")
+                            Label("成就和奖励", systemImage: "trophy.fill")
+                        }
+                        .font(.system(size: 14))
+                        .foregroundColor(.white.opacity(0.8))
+                        .padding(.vertical, 8)
+                    }
+                    .padding(.horizontal, 20)
+
+                    // 确认输入框
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("请输入 \"删除\" 以确认")
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundColor(.white.opacity(0.8))
+
+                        TextField("", text: $confirmationText)
+                            .font(.system(size: 16))
+                            .foregroundColor(.white)
+                            .padding()
+                            .background(Color.white.opacity(0.1))
+                            .cornerRadius(12)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .stroke(
+                                        confirmationText == "删除" ? Color.red : Color.gray.opacity(0.3),
+                                        lineWidth: 1
+                                    )
+                            )
+                            .autocorrectionDisabled()
+                            .textInputAutocapitalization(.never)
+                            .onChange(of: confirmationText) { _, newValue in
+                                print("📝 [设置] 用户输入确认文本: \"\(newValue)\"")
+                            }
+                    }
+                    .padding(.horizontal, 20)
+
+                    Spacer()
+
+                    // 按钮
+                    VStack(spacing: 12) {
+                        // 确认删除按钮
+                        Button(action: {
+                            print("🔴 [设置] 用户点击确认删除按钮，输入文本: \"\(confirmationText)\"")
+                            if confirmationText == "删除" {
+                                print("✅ [设置] 确认文本正确，执行删除操作")
+                                onConfirm()
+                            } else {
+                                print("⚠️ [设置] 确认文本不正确，当前输入: \"\(confirmationText)\"")
+                            }
+                        }) {
+                            HStack(spacing: 12) {
+                                Image(systemName: "trash.fill")
+                                    .font(.system(size: 18))
+
+                                Text("确认删除")
+                                    .font(.system(size: 18, weight: .semibold))
+                            }
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 54)
+                            .background(
+                                confirmationText == "删除"
+                                    ? LinearGradient(
+                                        colors: [Color.red, Color.red.opacity(0.8)],
+                                        startPoint: .leading,
+                                        endPoint: .trailing
+                                    )
+                                    : LinearGradient(
+                                        colors: [Color.gray.opacity(0.5), Color.gray.opacity(0.3)],
+                                        startPoint: .leading,
+                                        endPoint: .trailing
+                                    )
+                            )
+                            .cornerRadius(27)
+                            .shadow(
+                                color: confirmationText == "删除" ? Color.red.opacity(0.3) : Color.clear,
+                                radius: 10
+                            )
+                        }
+                        .disabled(confirmationText != "删除")
+
+                        // 取消按钮
+                        Button(action: {
+                            print("🔵 [设置] 用户点击取消删除")
+                            confirmationText = ""
+                            isPresented = false
+                        }) {
+                            Text("取消")
+                                .font(.system(size: 18, weight: .semibold))
+                                .foregroundColor(.white.opacity(0.8))
+                                .frame(maxWidth: .infinity)
+                                .frame(height: 54)
+                                .background(Color.white.opacity(0.1))
+                                .cornerRadius(27)
+                        }
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.bottom, 30)
+                }
+            }
+            .navigationTitle("确认删除")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button(action: {
+                        print("🔵 [设置] 用户点击关闭按钮")
+                        confirmationText = ""
+                        isPresented = false
+                    }) {
+                        Image(systemName: "xmark")
+                            .foregroundColor(.white.opacity(0.8))
+                    }
+                }
+            }
+        }
     }
 }
 

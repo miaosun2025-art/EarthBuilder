@@ -492,6 +492,81 @@ class AuthManager: ObservableObject {
         isLoading = false
     }
 
+    /// 删除用户账户
+    /// 调用 Supabase Edge Function 删除当前用户的账户
+    func deleteAccount() async -> Bool {
+        print("🔴 [认证] 开始删除账户流程")
+        isLoading = true
+        errorMessage = nil
+
+        do {
+            // 获取当前会话的 access token
+            guard let session = try await supabase.auth.session else {
+                print("❌ [认证] 未找到有效会话")
+                errorMessage = "请先登录"
+                isLoading = false
+                return false
+            }
+
+            let accessToken = session.accessToken
+
+            // 调用 Edge Function
+            let url = URL(string: "https://taskfpupruagdzslzpac.supabase.co/functions/v1/delete-account")!
+            var request = URLRequest(url: url)
+            request.httpMethod = "POST"
+            request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+            print("🔵 [认证] 调用删除账户 API...")
+
+            let (data, response) = try await URLSession.shared.data(for: request)
+
+            guard let httpResponse = response as? HTTPURLResponse else {
+                print("❌ [认证] 无效的响应")
+                errorMessage = "删除账户失败：无效的响应"
+                isLoading = false
+                return false
+            }
+
+            print("📊 [认证] API 响应状态码: \(httpResponse.statusCode)")
+
+            if httpResponse.statusCode == 200 {
+                print("✅ [认证] 账户删除成功")
+
+                // 清除本地状态
+                isAuthenticated = false
+                needsPasswordSetup = false
+                currentUser = nil
+                otpSent = false
+                otpVerified = false
+                errorMessage = nil
+
+                isLoading = false
+                return true
+            } else {
+                // 解析错误响应
+                if let errorResponse = try? JSONDecoder().decode([String: String].self, from: data),
+                   let errorMsg = errorResponse["error"] {
+                    print("❌ [认证] 删除账户失败: \(errorMsg)")
+                    errorMessage = "删除账户失败: \(errorMsg)"
+                } else {
+                    print("❌ [认证] 删除账户失败，状态码: \(httpResponse.statusCode)")
+                    errorMessage = "删除账户失败"
+                }
+
+                isLoading = false
+                return false
+            }
+
+        } catch {
+            let errorDesc = error.localizedDescription
+            print("❌ [认证] 删除账户异常: \(errorDesc)")
+            errorMessage = "删除账户失败: \(errorDesc)"
+            isLoading = false
+            return false
+        }
+    }
+
     /// 检查当前会话状态
     func checkSession() async {
         isLoading = true

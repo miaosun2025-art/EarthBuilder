@@ -318,6 +318,17 @@ struct DeleteAccountConfirmationView: View {
     @Binding var confirmationText: String
     let onConfirm: () -> Void
 
+    // 根据当前语言环境确定正确的确认文本
+    private var expectedConfirmationText: String {
+        let currentLanguage = Locale.current.language.languageCode?.identifier ?? "zh"
+        return currentLanguage.starts(with: "zh") ? "删除" : "DELETE"
+    }
+
+    // 检查用户输入是否匹配（支持中英文）
+    private var isConfirmationValid: Bool {
+        confirmationText == "删除" || confirmationText == "DELETE"
+    }
+
     var body: some View {
         NavigationView {
             ZStack {
@@ -366,7 +377,7 @@ struct DeleteAccountConfirmationView: View {
 
                     // 确认输入框
                     VStack(alignment: .leading, spacing: 8) {
-                        Text("请输入 \"删除\" 以确认")
+                        Text("请输入 \"\(expectedConfirmationText)\" 以确认")
                             .font(.system(size: 14, weight: .medium))
                             .foregroundColor(.white.opacity(0.8))
 
@@ -379,7 +390,7 @@ struct DeleteAccountConfirmationView: View {
                             .overlay(
                                 RoundedRectangle(cornerRadius: 12)
                                     .stroke(
-                                        confirmationText == "删除" ? Color.red : Color.gray.opacity(0.3),
+                                        isConfirmationValid ? Color.red : Color.gray.opacity(0.3),
                                         lineWidth: 1
                                     )
                             )
@@ -398,11 +409,11 @@ struct DeleteAccountConfirmationView: View {
                         // 确认删除按钮
                         Button(action: {
                             print("🔴 [设置] 用户点击确认删除按钮，输入文本: \"\(confirmationText)\"")
-                            if confirmationText == "删除" {
+                            if isConfirmationValid {
                                 print("✅ [设置] 确认文本正确，执行删除操作")
                                 onConfirm()
                             } else {
-                                print("⚠️ [设置] 确认文本不正确，当前输入: \"\(confirmationText)\"")
+                                print("⚠️ [设置] 确认文本不正确，当前输入: \"\(confirmationText)\"，期望: \"\(expectedConfirmationText)\"")
                             }
                         }) {
                             HStack(spacing: 12) {
@@ -416,7 +427,7 @@ struct DeleteAccountConfirmationView: View {
                             .frame(maxWidth: .infinity)
                             .frame(height: 54)
                             .background(
-                                confirmationText == "删除"
+                                isConfirmationValid
                                     ? LinearGradient(
                                         colors: [Color.red, Color.red.opacity(0.8)],
                                         startPoint: .leading,
@@ -430,11 +441,11 @@ struct DeleteAccountConfirmationView: View {
                             )
                             .cornerRadius(27)
                             .shadow(
-                                color: confirmationText == "删除" ? Color.red.opacity(0.3) : Color.clear,
+                                color: isConfirmationValid ? Color.red.opacity(0.3) : Color.clear,
                                 radius: 10
                             )
                         }
-                        .disabled(confirmationText != "删除")
+                        .disabled(!isConfirmationValid)
 
                         // 取消按钮
                         Button(action: {

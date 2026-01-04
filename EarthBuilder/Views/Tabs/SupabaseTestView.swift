@@ -1,12 +1,6 @@
 import SwiftUI
 import Supabase
 
-// 在 View 外部定义 SupabaseClient 实例
-let supabase = SupabaseClient(
-    supabaseURL: URL(string: "https://taskfpupruagdzslzpac.supabase.co")!,
-    supabaseKey: "sb_publishable_rAh_7bJMg7A87nSc9SVlBA_nQI28cCH"
-)
-
 struct SupabaseTestView: View {
     @State private var isConnected: Bool? = nil
     @State private var debugLog: String = "点击按钮开始测试连接..."

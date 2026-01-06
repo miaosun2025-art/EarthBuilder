@@ -3,6 +3,7 @@ import SwiftUI
 /// 根视图：控制认证、启动页与主界面的切换
 struct RootView: View {
     @EnvironmentObject var authManager: AuthManager
+    @StateObject private var languageManager = LanguageManager.shared
 
     /// 启动页是否完成（登录后的启动画面）
     @State private var splashFinished = false
@@ -36,6 +37,7 @@ struct RootView: View {
                     .transition(.opacity)
             }
         }
+        .environment(\.locale, languageManager.currentLocale)
         .animation(.easeInOut(duration: 0.3), value: authManager.isInitializing)
         .animation(.easeInOut(duration: 0.3), value: authManager.isAuthenticated)
         .animation(.easeInOut(duration: 0.3), value: authManager.needsPasswordSetup)

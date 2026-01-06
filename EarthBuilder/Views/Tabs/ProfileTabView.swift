@@ -256,7 +256,7 @@ struct ProfileTabView: View {
 
     // MARK: - Helper Views
 
-    private func settingRow(icon: String, title: String, subtitle: String) -> some View {
+    private func settingRow(icon: String, title: LocalizedStringKey, subtitle: LocalizedStringKey) -> some View {
         HStack(spacing: 16) {
             // 图标
             ZStack {

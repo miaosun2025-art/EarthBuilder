@@ -64,6 +64,9 @@ class LanguageManager: ObservableObject {
     /// 当前语言的 Bundle
     @Published private(set) var languageBundle: Bundle = Bundle.main
 
+    /// 当前语言的 Locale（用于 SwiftUI 环境）
+    @Published private(set) var currentLocale: Locale = Locale.current
+
     /// 刷新触发器 - 用于强制刷新 UI
     @Published var refreshID: UUID = UUID()
 
@@ -124,6 +127,14 @@ class LanguageManager: ObservableObject {
         let languageCode = currentLanguageCode
 
         print("🌍 [语言] 更新 Bundle，语言代码: \(languageCode)")
+
+        // 更新 Locale（用于 SwiftUI 的 LocalizedStringKey）
+        currentLocale = Locale(identifier: languageCode)
+        print("✅ [语言] 更新 Locale: \(languageCode)")
+
+        // 设置 UserDefaults AppleLanguages（影响 Bundle 本地化）
+        UserDefaults.standard.set([languageCode], forKey: "AppleLanguages")
+        UserDefaults.standard.synchronize()
 
         // 尝试获取对应语言的 Bundle
         if let path = Bundle.main.path(forResource: languageCode, ofType: "lproj"),

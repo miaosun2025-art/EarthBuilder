@@ -18,11 +18,11 @@ struct MoreTabView: View {
                                 .foregroundColor(.orange)
                                 .padding(.top, 20)
 
-                            Text("更多".localized)
+                            Text("更多")
                                 .font(.system(size: 28, weight: .bold))
                                 .foregroundColor(.white)
 
-                            Text("探索和圈占领地".localized)
+                            Text("探索和圈占领地")
                                 .font(.system(size: 16))
                                 .foregroundColor(.gray)
                         }
@@ -61,7 +61,7 @@ struct MoreTabView: View {
                     }
                 }
             }
-            .navigationTitle("更多".localized)
+            .navigationTitle("更多")
             .navigationBarTitleDisplayMode(.inline)
             .id(languageManager.refreshID) // 强制刷新
         }
@@ -69,7 +69,7 @@ struct MoreTabView: View {
 
     // MARK: - Helper Views
 
-    private func settingRow(icon: String, title: String, subtitle: String) -> some View {
+    private func settingRow(icon: String, title: LocalizedStringKey, subtitle: LocalizedStringKey) -> some View {
         HStack(spacing: 16) {
             // 图标
             ZStack {
@@ -89,6 +89,43 @@ struct MoreTabView: View {
                     .foregroundColor(.white)
 
                 Text(subtitle)
+                    .font(.system(size: 14))
+                    .foregroundColor(.gray)
+            }
+
+            Spacer()
+
+            // 箭头
+            Image(systemName: "chevron.right")
+                .foregroundColor(.gray)
+                .font(.system(size: 14))
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+        .contentShape(Rectangle())
+    }
+
+    // Overload for dynamic String subtitle (e.g., language display name)
+    private func settingRow(icon: String, title: LocalizedStringKey, subtitle: String) -> some View {
+        HStack(spacing: 16) {
+            // 图标
+            ZStack {
+                Circle()
+                    .fill(Color.orange.opacity(0.2))
+                    .frame(width: 44, height: 44)
+
+                Image(systemName: icon)
+                    .foregroundColor(.orange)
+                    .font(.system(size: 20))
+            }
+
+            // 文字
+            VStack(alignment: .leading, spacing: 4) {
+                Text(title)
+                    .font(.system(size: 16, weight: .medium))
+                    .foregroundColor(.white)
+
+                Text(verbatim: subtitle)
                     .font(.system(size: 14))
                     .foregroundColor(.gray)
             }

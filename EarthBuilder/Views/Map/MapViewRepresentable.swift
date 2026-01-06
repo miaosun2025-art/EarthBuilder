@@ -21,6 +21,15 @@ struct MapViewRepresentable: UIViewRepresentable {
     /// 是否已完成首次定位（防止重复居中）
     @Binding var hasLocatedUser: Bool
 
+    /// 追踪路径坐标数组（绑定到外部状态）
+    @Binding var trackingPath: [CLLocationCoordinate2D]
+
+    /// 路径更新版本号
+    let pathUpdateVersion: Int
+
+    /// 是否正在追踪
+    let isTracking: Bool
+
     // MARK: - UIViewRepresentable
 
     /// 创建并配置 MKMapView
@@ -50,9 +59,10 @@ struct MapViewRepresentable: UIViewRepresentable {
         return mapView
     }
 
-    /// 更新视图（本项目中暂不需要）
+    /// 更新视图
     func updateUIView(_ uiView: MKMapView, context: Context) {
-        // 空实现即可
+        // 更新追踪路径
+        context.coordinator.updateTrackingPath(on: uiView, path: trackingPath, version: pathUpdateVersion)
     }
 
     /// 创建协调器（Coordinator）
@@ -97,6 +107,9 @@ struct MapViewRepresentable: UIViewRepresentable {
 
         /// 首次居中标志（防止重复自动居中）
         private var hasInitialCentered = false
+
+        /// 上次更新的路径版本号
+        private var lastPathVersion: Int = -1
 
         // MARK: - Initialization
 
@@ -163,6 +176,59 @@ struct MapViewRepresentable: UIViewRepresentable {
         /// 地图加载完成时调用
         func mapViewDidFinishLoadingMap(_ mapView: MKMapView) {
             print("✅ [地图] 地图加载完成")
+        }
+
+        // MARK: - Path Tracking
+
+        /// 更新追踪路径
+        /// - Parameters:
+        ///   - mapView: 地图视图
+        ///   - path: 路径坐标数组
+        ///   - version: 路径版本号
+        func updateTrackingPath(on mapView: MKMapView, path: [CLLocationCoordinate2D], version: Int) {
+            // 检查版本号是否改变
+            guard version != lastPathVersion else {
+                return
+            }
+
+            print("🛤️ [地图] 更新追踪路径，版本 \(version)，共 \(path.count) 个点")
+
+            // 移除所有旧的 overlay
+            mapView.removeOverlays(mapView.overlays)
+
+            // 如果路径为空，直接返回
+            guard path.count >= 2 else {
+                print("ℹ️ [地图] 路径点数不足 2 个，跳过绘制")
+                lastPathVersion = version
+                return
+            }
+
+            // ⚠️ 关键：转换坐标（WGS-84 → GCJ-02）
+            let convertedPath = CoordinateConverter.wgs84ToGcj02(path)
+
+            // 创建 polyline
+            let polyline = MKPolyline(coordinates: convertedPath, count: convertedPath.count)
+
+            // 添加到地图
+            mapView.addOverlay(polyline)
+
+            // 更新版本号
+            lastPathVersion = version
+
+            print("✅ [地图] 轨迹绘制完成")
+        }
+
+        /// ⭐ 关键方法：为 overlay 提供渲染器（否则轨迹不显示！）
+        func mapView(_ mapView: MKMapView, rendererFor overlay: MKOverlay) -> MKOverlayRenderer {
+            if let polyline = overlay as? MKPolyline {
+                let renderer = MKPolylineRenderer(polyline: polyline)
+                renderer.strokeColor = UIColor.cyan // 青色轨迹
+                renderer.lineWidth = 5.0 // 线宽 5pt
+                renderer.lineCap = .round // 圆头线
+                print("🎨 [地图] 创建轨迹渲染器")
+                return renderer
+            }
+            return MKOverlayRenderer(overlay: overlay)
         }
     }
 }

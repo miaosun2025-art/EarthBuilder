@@ -44,12 +44,12 @@ struct MoreTabView: View {
                                 .background(Color.gray.opacity(0.2))
                                 .padding(.leading, 60)
 
-                            // Supabase 连接测试
-                            NavigationLink(destination: SupabaseTestView()) {
+                            // 开发测试
+                            NavigationLink(destination: TestMenuView()) {
                                 settingRow(
-                                    icon: "network",
-                                    title: "Supabase 连接测试",
-                                    subtitle: "测试项目与 Supabase 的连接状态"
+                                    icon: "flask",
+                                    title: "开发测试",
+                                    subtitle: "Supabase 和圈地功能测试"
                                 )
                             }
                         }

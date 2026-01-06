@@ -13,8 +13,8 @@ struct MapTabView: View {
 
     // MARK: - State
 
-    /// 定位管理器
-    @StateObject private var locationManager = LocationManager()
+    /// 定位管理器（使用单例）
+    @ObservedObject private var locationManager = LocationManager.shared
 
     /// 用户位置坐标
     @State private var userLocation: CLLocationCoordinate2D?
@@ -32,13 +32,21 @@ struct MapTabView: View {
                 hasLocatedUser: $hasLocatedUser,
                 trackingPath: $locationManager.pathCoordinates,
                 pathUpdateVersion: locationManager.pathUpdateVersion,
-                isTracking: locationManager.isTracking
+                isTracking: locationManager.isTracking,
+                isPathClosed: locationManager.isPathClosed
             )
             .ignoresSafeArea()
 
             // 顶部信息栏
             VStack {
                 topInfoBar
+
+                // 速度警告横幅
+                if let warning = locationManager.speedWarning {
+                    speedWarningBanner(warning: warning)
+                        .transition(.move(edge: .top).combined(with: .opacity))
+                }
+
                 Spacer()
             }
 
@@ -66,6 +74,16 @@ struct MapTabView: View {
         }
         .onAppear {
             handleOnAppear()
+        }
+        .onChange(of: locationManager.speedWarning) { oldValue, newValue in
+            // 速度警告出现时，3 秒后自动隐藏
+            if newValue != nil {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+                    if locationManager.speedWarning == newValue {
+                        locationManager.speedWarning = nil
+                    }
+                }
+            }
         }
     }
 
@@ -171,6 +189,32 @@ struct MapTabView: View {
         }
         .disabled(userLocation == nil)
         .opacity(userLocation == nil ? 0.5 : 1.0)
+    }
+
+    /// 速度警告横幅
+    private func speedWarningBanner(warning: String) -> some View {
+        HStack(spacing: 12) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .font(.system(size: 20))
+                .foregroundColor(.white)
+
+            Text(warning)
+                .font(.system(size: 14, weight: .medium))
+                .foregroundColor(.white)
+
+            Spacer()
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+        .background(
+            locationManager.isTracking
+                ? ApocalypseTheme.warning // 还在追踪：黄色警告
+                : ApocalypseTheme.danger   // 已停止追踪：红色严重
+        )
+        .cornerRadius(12)
+        .shadow(color: Color.black.opacity(0.2), radius: 8)
+        .padding(.horizontal, 20)
+        .padding(.top, 8)
     }
 
     /// 权限被拒绝提示视图

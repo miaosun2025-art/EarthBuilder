@@ -86,14 +86,50 @@ struct ProfileTabView: View {
                         .padding(.horizontal, 20)
                         .padding(.top, 20)
 
+                        // 统计数据卡片
+                        HStack(spacing: 0) {
+                            // 领地
+                            statisticItem(
+                                icon: "flag.fill",
+                                value: "0",
+                                label: LocalizedStringKey("领地")
+                            )
+
+                            Divider()
+                                .background(Color.gray.opacity(0.3))
+                                .frame(height: 60)
+
+                            // 资源点
+                            statisticItem(
+                                icon: "info.circle.fill",
+                                value: "0",
+                                label: LocalizedStringKey("资源点")
+                            )
+
+                            Divider()
+                                .background(Color.gray.opacity(0.3))
+                                .frame(height: 60)
+
+                            // 探索距离
+                            statisticItem(
+                                icon: "figure.walk",
+                                value: "0",
+                                label: LocalizedStringKey("探索距离")
+                            )
+                        }
+                        .padding(.vertical, 20)
+                        .background(Color.white.opacity(0.05))
+                        .cornerRadius(20)
+                        .padding(.horizontal, 20)
+
                         // 功能列表
                         VStack(spacing: 0) {
-                            // 账号设置
-                            NavigationLink(destination: Text("账号设置")) {
-                                settingRow(
-                                    icon: "person.circle",
-                                    title: "账号设置",
-                                    subtitle: "修改个人信息"
+                            // 设置
+                            NavigationLink(destination: Text("设置")) {
+                                menuRow(
+                                    icon: "gearshape.fill",
+                                    iconColor: .gray,
+                                    title: LocalizedStringKey("设置")
                                 )
                             }
 
@@ -101,12 +137,25 @@ struct ProfileTabView: View {
                                 .background(Color.gray.opacity(0.2))
                                 .padding(.leading, 60)
 
-                            // 安全设置
-                            NavigationLink(destination: Text("安全设置")) {
-                                settingRow(
-                                    icon: "lock.shield",
-                                    title: "安全设置",
-                                    subtitle: "修改密码、绑定邮箱"
+                            // 通知
+                            NavigationLink(destination: Text("通知")) {
+                                menuRow(
+                                    icon: "bell.fill",
+                                    iconColor: .orange,
+                                    title: LocalizedStringKey("通知")
+                                )
+                            }
+
+                            Divider()
+                                .background(Color.gray.opacity(0.2))
+                                .padding(.leading, 60)
+
+                            // 帮助
+                            NavigationLink(destination: Text("帮助")) {
+                                menuRow(
+                                    icon: "questionmark.circle.fill",
+                                    iconColor: .blue,
+                                    title: LocalizedStringKey("帮助")
                                 )
                             }
 
@@ -116,10 +165,10 @@ struct ProfileTabView: View {
 
                             // 关于
                             NavigationLink(destination: Text("关于")) {
-                                settingRow(
-                                    icon: "info.circle",
-                                    title: "关于",
-                                    subtitle: "版本信息、用户协议"
+                                menuRow(
+                                    icon: "info.circle.fill",
+                                    iconColor: .green,
+                                    title: LocalizedStringKey("关于")
                                 )
                             }
                         }
@@ -128,6 +177,34 @@ struct ProfileTabView: View {
                         .padding(.horizontal, 20)
 
                         Spacer()
+
+                        // 删除账户按钮
+                        Button(action: {
+                            print("🔴 [设置] 用户点击删除账户按钮")
+                            showDeleteAccountDialog = true
+                        }) {
+                            HStack(spacing: 12) {
+                                Image(systemName: "trash")
+                                    .font(.system(size: 18))
+
+                                Text("删除账户")
+                                    .font(.system(size: 18, weight: .semibold))
+                            }
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 54)
+                            .background(
+                                LinearGradient(
+                                    colors: [Color.red.opacity(0.8), Color.red.opacity(0.6)],
+                                    startPoint: .leading,
+                                    endPoint: .trailing
+                                )
+                            )
+                            .cornerRadius(27)
+                            .shadow(color: Color.red.opacity(0.3), radius: 10)
+                        }
+                        .disabled(authManager.isLoading)
+                        .padding(.horizontal, 20)
 
                         // 退出登录按钮
                         Button(action: {
@@ -157,31 +234,6 @@ struct ProfileTabView: View {
                             )
                             .cornerRadius(27)
                             .shadow(color: Color.red.opacity(0.3), radius: 10)
-                        }
-                        .disabled(authManager.isLoading)
-                        .padding(.horizontal, 20)
-
-                        // 删除账户按钮
-                        Button(action: {
-                            print("🔴 [设置] 用户点击删除账户按钮")
-                            showDeleteAccountDialog = true
-                        }) {
-                            HStack(spacing: 12) {
-                                Image(systemName: "trash.circle")
-                                    .font(.system(size: 18))
-
-                                Text("删除账户")
-                                    .font(.system(size: 18, weight: .semibold))
-                            }
-                            .foregroundColor(.white.opacity(0.8))
-                            .frame(maxWidth: .infinity)
-                            .frame(height: 54)
-                            .background(Color.white.opacity(0.1))
-                            .cornerRadius(27)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 27)
-                                    .stroke(Color.red.opacity(0.5), lineWidth: 1)
-                            )
                         }
                         .disabled(authManager.isLoading)
                         .padding(.horizontal, 20)
@@ -255,6 +307,84 @@ struct ProfileTabView: View {
     }
 
     // MARK: - Helper Views
+
+    /// 统计项视图
+    private func statisticItem(icon: String, value: String, label: LocalizedStringKey) -> some View {
+        VStack(spacing: 12) {
+            // 图标
+            Image(systemName: icon)
+                .font(.system(size: 28))
+                .foregroundColor(.orange)
+
+            // 数值
+            Text(value)
+                .font(.system(size: 24, weight: .bold))
+                .foregroundColor(.white)
+
+            // 标签
+            Text(label)
+                .font(.system(size: 14))
+                .foregroundColor(.gray)
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    /// 菜单行视图
+    private func menuRow(icon: String, iconColor: Color, title: LocalizedStringKey) -> some View {
+        HStack(spacing: 16) {
+            // 图标
+            Image(systemName: icon)
+                .font(.system(size: 24))
+                .foregroundColor(iconColor)
+                .frame(width: 40)
+
+            // 标题
+            Text(title)
+                .font(.system(size: 18, weight: .medium))
+                .foregroundColor(.white)
+
+            Spacer()
+
+            // 箭头
+            Image(systemName: "chevron.right")
+                .foregroundColor(.gray)
+                .font(.system(size: 14))
+        }
+        .padding(.horizontal, 20)
+        .padding(.vertical, 16)
+        .contentShape(Rectangle())
+    }
+
+    /// 菜单行视图（带尾部文本）
+    private func menuRowWithTrailing(icon: String, iconColor: Color, title: String, trailing: String) -> some View {
+        HStack(spacing: 16) {
+            // 图标
+            Image(systemName: icon)
+                .font(.system(size: 24))
+                .foregroundColor(iconColor)
+                .frame(width: 40)
+
+            // 标题
+            Text(title)
+                .font(.system(size: 18, weight: .medium))
+                .foregroundColor(.white)
+
+            Spacer()
+
+            // 尾部文本
+            Text(trailing)
+                .font(.system(size: 16))
+                .foregroundColor(.gray)
+
+            // 箭头
+            Image(systemName: "chevron.right")
+                .foregroundColor(.gray)
+                .font(.system(size: 14))
+        }
+        .padding(.horizontal, 20)
+        .padding(.vertical, 16)
+        .contentShape(Rectangle())
+    }
 
     private func settingRow(icon: String, title: LocalizedStringKey, subtitle: LocalizedStringKey) -> some View {
         HStack(spacing: 16) {

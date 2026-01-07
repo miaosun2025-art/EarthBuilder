@@ -48,8 +48,8 @@ struct MoreTabView: View {
                             NavigationLink(destination: TestMenuView()) {
                                 settingRow(
                                     icon: "flask",
-                                    title: "开发测试",
-                                    subtitle: "Supabase 和圈地功能测试"
+                                    title: LocalizedStringKey("开发测试"),
+                                    subtitle: LocalizedStringKey("Supabase 和圈地功能测试")
                                 )
                             }
                         }

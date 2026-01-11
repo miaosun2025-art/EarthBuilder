@@ -22,6 +22,9 @@ struct MapTabView: View {
     /// 是否已完成首次定位
     @State private var hasLocatedUser = false
 
+    /// 是否显示验证结果横幅
+    @State private var showValidationBanner = false
+
     // MARK: - Body
 
     var body: some View {
@@ -44,6 +47,12 @@ struct MapTabView: View {
                 // 速度警告横幅
                 if let warning = locationManager.speedWarning {
                     speedWarningBanner(warning: warning)
+                        .transition(.move(edge: .top).combined(with: .opacity))
+                }
+
+                // 验证结果横幅（闭环后显示成功/失败）
+                if showValidationBanner {
+                    validationResultBanner
                         .transition(.move(edge: .top).combined(with: .opacity))
                 }
 
@@ -81,6 +90,23 @@ struct MapTabView: View {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
                     if locationManager.speedWarning == newValue {
                         locationManager.speedWarning = nil
+                    }
+                }
+            }
+        }
+        .onChange(of: locationManager.isPathClosed) { oldValue, newValue in
+            // 监听闭环状态，闭环后根据验证结果显示横幅
+            if newValue {
+                // 闭环后延迟一点点，等待验证结果
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                    withAnimation {
+                        showValidationBanner = true
+                    }
+                    // 3 秒后自动隐藏
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+                        withAnimation {
+                            showValidationBanner = false
+                        }
                     }
                 }
             }
@@ -211,6 +237,35 @@ struct MapTabView: View {
                 ? ApocalypseTheme.warning // 还在追踪：黄色警告
                 : ApocalypseTheme.danger   // 已停止追踪：红色严重
         )
+        .cornerRadius(12)
+        .shadow(color: Color.black.opacity(0.2), radius: 8)
+        .padding(.horizontal, 20)
+        .padding(.top, 8)
+    }
+
+    /// 验证结果横幅（根据验证结果显示成功或失败）
+    private var validationResultBanner: some View {
+        HStack(spacing: 8) {
+            Image(systemName: locationManager.territoryValidationPassed
+                  ? "checkmark.circle.fill"
+                  : "xmark.circle.fill")
+                .font(.body)
+
+            if locationManager.territoryValidationPassed {
+                Text("圈地成功！领地面积: \(String(format: "%.0f", locationManager.calculatedArea))m²")
+                    .font(.subheadline)
+                    .fontWeight(.medium)
+            } else {
+                Text(locationManager.territoryValidationError ?? "验证失败")
+                    .font(.subheadline)
+                    .fontWeight(.medium)
+            }
+        }
+        .foregroundColor(.white)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+        .frame(maxWidth: .infinity)
+        .background(locationManager.territoryValidationPassed ? Color.green : Color.red)
         .cornerRadius(12)
         .shadow(color: Color.black.opacity(0.2), radius: 8)
         .padding(.horizontal, 20)

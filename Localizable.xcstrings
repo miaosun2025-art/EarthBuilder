@@ -216,6 +216,9 @@
     "圈地功能测试" : {
 
     },
+    "圈地成功！领地面积: %@m²" : {
+
+    },
     "圈地测试" : {
 
     },
@@ -613,16 +616,6 @@
         }
       }
     },
-    "资源点" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Resources"
-          }
-        }
-      }
-    },
     "语言 / Language" : {
 
     },
@@ -713,6 +706,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Account Settings"
+          }
+        }
+      }
+    },
+    "资源点" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Resources"
           }
         }
       }

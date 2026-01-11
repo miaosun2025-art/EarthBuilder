@@ -93,6 +93,9 @@ class LocationManager: NSObject, ObservableObject {
     /// 计算得到的领地面积（平方米）
     @Published var calculatedArea: Double = 0
 
+    /// 追踪开始时间（用于上传时记录）
+    @Published var trackingStartTime: Date?
+
     // MARK: - Computed Properties
 
     /// 是否已授权定位
@@ -163,6 +166,7 @@ class LocationManager: NSObject, ObservableObject {
 
         print("🚩 [路径] 开始路径追踪")
         isTracking = true
+        trackingStartTime = Date()
 
         // 记录日志
         TerritoryLogger.shared.log("开始圈地追踪", type: .info)
@@ -173,17 +177,46 @@ class LocationManager: NSObject, ObservableObject {
         }
     }
 
-    /// 停止路径追踪
-    func stopPathTracking() {
-        print("🛑 [路径] 停止路径追踪")
-        isTracking = false
+    /// 暂停路径追踪（闭环后使用，保留数据等待上传确认）
+    func pausePathTracking() {
+        print("⏸️ [路径] 暂停路径追踪（等待用户确认上传）")
 
         // 记录日志
-        TerritoryLogger.shared.log("停止追踪，共 \(pathCoordinates.count) 个点", type: .info)
+        TerritoryLogger.shared.log("闭环完成，等待用户确认登记", type: .info)
 
         // 停止定时器
         pathUpdateTimer?.invalidate()
         pathUpdateTimer = nil
+
+        // 只停止追踪状态，保留所有数据
+        isTracking = false
+    }
+
+    /// 停止路径追踪并重置所有状态（用户取消或上传成功后调用）
+    func stopPathTracking() {
+        print("🛑 [路径] 停止路径追踪并重置状态")
+
+        // 记录日志
+        TerritoryLogger.shared.log("重置圈地状态", type: .info)
+
+        // 停止定时器
+        pathUpdateTimer?.invalidate()
+        pathUpdateTimer = nil
+
+        // 重置所有追踪相关状态
+        isTracking = false
+        territoryValidationPassed = false
+        territoryValidationError = nil
+        calculatedArea = 0
+        pathCoordinates = []
+        isPathClosed = false
+        pathUpdateVersion += 1
+
+        // 重置速度检测状态
+        speedWarning = nil
+        isOverSpeed = false
+        lastLocationTimestamp = nil
+        trackingStartTime = nil
     }
 
     /// 清除路径
@@ -291,8 +324,8 @@ class LocationManager: NSObject, ObservableObject {
                 self.territoryValidationError = validationResult.errorMessage
             }
 
-            // 停止追踪
-            stopPathTracking()
+            // 暂停追踪（保留数据等待用户确认上传）
+            pausePathTracking()
         } else {
             print("ℹ️ [闭环] 未闭环，距离起点 \(String(format: "%.1f", distance)) 米 > \(closureDistanceThreshold) 米")
         }

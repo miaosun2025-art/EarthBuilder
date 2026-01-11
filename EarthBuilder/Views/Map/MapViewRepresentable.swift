@@ -33,6 +33,12 @@ struct MapViewRepresentable: UIViewRepresentable {
     /// 路径是否已闭环
     let isPathClosed: Bool
 
+    /// 已加载的领地列表
+    var territories: [Territory]
+
+    /// 当前用户 ID（用于区分自己的领地）
+    var currentUserId: String?
+
     // MARK: - UIViewRepresentable
 
     /// 创建并配置 MKMapView
@@ -70,6 +76,13 @@ struct MapViewRepresentable: UIViewRepresentable {
             path: trackingPath,
             version: pathUpdateVersion,
             isClosed: isPathClosed
+        )
+
+        // 绘制已加载的领地
+        context.coordinator.drawTerritories(
+            on: uiView,
+            territories: territories,
+            currentUserId: currentUserId
         )
     }
 
@@ -118,6 +131,9 @@ struct MapViewRepresentable: UIViewRepresentable {
 
         /// 上次更新的路径版本号
         private var lastPathVersion: Int = -1
+
+        /// 上次绘制的领地数量
+        private var lastTerritoriesCount: Int = -1
 
         // MARK: - Initialization
 
@@ -202,8 +218,17 @@ struct MapViewRepresentable: UIViewRepresentable {
 
             print("🛤️ [地图] 更新追踪路径，版本 \(version)，共 \(path.count) 个点，闭环: \(isClosed)")
 
-            // 移除所有旧的 overlay
-            mapView.removeOverlays(mapView.overlays)
+            // 移除路径相关的 overlay（保留领地 overlay）
+            let pathOverlays = mapView.overlays.filter { overlay in
+                if let polyline = overlay as? MKPolyline {
+                    return polyline.title == "open" || polyline.title == "closed"
+                }
+                if let polygon = overlay as? MKPolygon {
+                    return polygon.title == "polygon" // 当前圈地的多边形
+                }
+                return false
+            }
+            mapView.removeOverlays(pathOverlays)
 
             // 如果路径为空，直接返回
             guard path.count >= 2 else {
@@ -236,6 +261,55 @@ struct MapViewRepresentable: UIViewRepresentable {
             print("✅ [地图] 轨迹绘制完成")
         }
 
+        // MARK: - Territory Drawing
+
+        /// 绘制已加载的领地
+        /// - Parameters:
+        ///   - mapView: 地图视图
+        ///   - territories: 领地数组
+        ///   - currentUserId: 当前用户 ID
+        func drawTerritories(on mapView: MKMapView, territories: [Territory], currentUserId: String?) {
+            // 检查领地数量是否改变（避免重复绘制）
+            guard territories.count != lastTerritoriesCount else {
+                return
+            }
+
+            print("🏰 [地图] 绘制领地，共 \(territories.count) 个")
+
+            // 移除旧的领地多边形（保留路径轨迹）
+            let territoryOverlays = mapView.overlays.filter { overlay in
+                if let polygon = overlay as? MKPolygon {
+                    return polygon.title == "mine" || polygon.title == "others"
+                }
+                return false
+            }
+            mapView.removeOverlays(territoryOverlays)
+
+            // 绘制每个领地
+            for territory in territories {
+                var coords = territory.toCoordinates()
+
+                // 中国大陆需要坐标转换（WGS-84 → GCJ-02）
+                coords = CoordinateConverter.wgs84ToGcj02(coords)
+
+                guard coords.count >= 3 else { continue }
+
+                let polygon = MKPolygon(coordinates: coords, count: coords.count)
+
+                // ⚠️ 关键：比较 userId 时必须统一大小写！
+                // 数据库存的是小写 UUID，但 iOS 的 uuidString 返回大写
+                let isMine = territory.userId.lowercased() == currentUserId?.lowercased()
+                polygon.title = isMine ? "mine" : "others"
+
+                mapView.addOverlay(polygon, level: .aboveRoads)
+            }
+
+            // 更新领地数量
+            lastTerritoriesCount = territories.count
+
+            print("✅ [地图] 领地绘制完成")
+        }
+
         /// ⭐ 关键方法：为 overlay 提供渲染器（否则轨迹不显示！）
         func mapView(_ mapView: MKMapView, rendererFor overlay: MKOverlay) -> MKOverlayRenderer {
             // 处理轨迹线
@@ -259,10 +333,26 @@ struct MapViewRepresentable: UIViewRepresentable {
             // 处理多边形填充
             if let polygon = overlay as? MKPolygon {
                 let renderer = MKPolygonRenderer(polygon: polygon)
-                renderer.fillColor = UIColor.systemGreen.withAlphaComponent(0.25) // 半透明绿色填充
-                renderer.strokeColor = UIColor.systemGreen // 绿色边框
-                renderer.lineWidth = 2.0 // 边框宽度
-                print("🎨 [地图] 创建多边形渲染器")
+
+                // 根据 title 区分不同类型的多边形
+                if polygon.title == "mine" {
+                    // 我的领地：绿色
+                    renderer.fillColor = UIColor.systemGreen.withAlphaComponent(0.25)
+                    renderer.strokeColor = UIColor.systemGreen
+                    print("🎨 [地图] 创建领地渲染器（我的-绿色）")
+                } else if polygon.title == "others" {
+                    // 他人领地：橙色
+                    renderer.fillColor = UIColor.systemOrange.withAlphaComponent(0.25)
+                    renderer.strokeColor = UIColor.systemOrange
+                    print("🎨 [地图] 创建领地渲染器（他人-橙色）")
+                } else {
+                    // 当前圈地的多边形（polygon）：绿色
+                    renderer.fillColor = UIColor.systemGreen.withAlphaComponent(0.25)
+                    renderer.strokeColor = UIColor.systemGreen
+                    print("🎨 [地图] 创建多边形渲染器（当前圈地）")
+                }
+
+                renderer.lineWidth = 2.0
                 return renderer
             }
 

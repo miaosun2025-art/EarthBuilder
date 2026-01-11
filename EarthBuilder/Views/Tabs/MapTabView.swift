@@ -16,14 +16,32 @@ struct MapTabView: View {
     /// 定位管理器（使用单例）
     @ObservedObject private var locationManager = LocationManager.shared
 
+    /// 领地管理器（使用单例）
+    @ObservedObject private var territoryManager = TerritoryManager.shared
+
+    /// 认证管理器（获取当前用户 ID）
+    @EnvironmentObject private var authManager: AuthManager
+
     /// 用户位置坐标
     @State private var userLocation: CLLocationCoordinate2D?
+
+    /// 已加载的领地列表
+    @State private var territories: [Territory] = []
 
     /// 是否已完成首次定位
     @State private var hasLocatedUser = false
 
     /// 是否显示验证结果横幅
     @State private var showValidationBanner = false
+
+    /// 是否正在上传
+    @State private var isUploading = false
+
+    /// 上传结果提示
+    @State private var uploadResultMessage: String?
+
+    /// 是否显示上传结果
+    @State private var showUploadResult = false
 
     // MARK: - Body
 
@@ -36,7 +54,9 @@ struct MapTabView: View {
                 trackingPath: $locationManager.pathCoordinates,
                 pathUpdateVersion: locationManager.pathUpdateVersion,
                 isTracking: locationManager.isTracking,
-                isPathClosed: locationManager.isPathClosed
+                isPathClosed: locationManager.isPathClosed,
+                territories: territories,
+                currentUserId: authManager.currentUser?.id.uuidString
             )
             .ignoresSafeArea()
 
@@ -54,6 +74,19 @@ struct MapTabView: View {
                 if showValidationBanner {
                     validationResultBanner
                         .transition(.move(edge: .top).combined(with: .opacity))
+                }
+
+                // 上传结果提示
+                if showUploadResult, let message = uploadResultMessage {
+                    uploadResultBanner(message: message)
+                        .transition(.move(edge: .top).combined(with: .opacity))
+                }
+
+                // 确认登记按钮区域（验证通过时显示）
+                if locationManager.isPathClosed {
+                    territoryActionButtons
+                        .transition(.move(edge: .top).combined(with: .opacity))
+                        .padding(.top, 8)
                 }
 
                 Spacer()
@@ -83,6 +116,10 @@ struct MapTabView: View {
         }
         .onAppear {
             handleOnAppear()
+            // 加载所有领地
+            Task {
+                await loadTerritories()
+            }
         }
         .onChange(of: locationManager.speedWarning) { oldValue, newValue in
             // 速度警告出现时，3 秒后自动隐藏
@@ -272,6 +309,81 @@ struct MapTabView: View {
         .padding(.top, 8)
     }
 
+    /// 领地操作按钮（确认登记 / 取消）
+    private var territoryActionButtons: some View {
+        HStack(spacing: 16) {
+            // 取消按钮
+            Button(action: {
+                withAnimation {
+                    locationManager.stopPathTracking()
+                    showValidationBanner = false
+                }
+            }) {
+                HStack(spacing: 6) {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 14, weight: .semibold))
+                    Text("取消")
+                        .font(.system(size: 16, weight: .semibold))
+                }
+                .foregroundColor(.white)
+                .padding(.horizontal, 20)
+                .padding(.vertical, 12)
+                .background(Color.gray.opacity(0.8))
+                .cornerRadius(10)
+            }
+
+            // 确认登记按钮（仅验证通过时可用）
+            if locationManager.territoryValidationPassed {
+                Button(action: {
+                    Task {
+                        await uploadCurrentTerritory()
+                    }
+                }) {
+                    HStack(spacing: 6) {
+                        if isUploading {
+                            ProgressView()
+                                .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                                .scaleEffect(0.8)
+                        } else {
+                            Image(systemName: "checkmark.circle.fill")
+                                .font(.system(size: 14, weight: .semibold))
+                        }
+                        Text(isUploading ? "登记中..." : "确认登记")
+                            .font(.system(size: 16, weight: .semibold))
+                    }
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 12)
+                    .background(Color.green)
+                    .cornerRadius(10)
+                }
+                .disabled(isUploading)
+            }
+        }
+        .padding(.horizontal, 20)
+    }
+
+    /// 上传结果横幅
+    private func uploadResultBanner(message: String) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: message.contains("成功") ? "checkmark.circle.fill" : "xmark.circle.fill")
+                .font(.body)
+
+            Text(message)
+                .font(.subheadline)
+                .fontWeight(.medium)
+        }
+        .foregroundColor(.white)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+        .frame(maxWidth: .infinity)
+        .background(message.contains("成功") ? Color.green : Color.red)
+        .cornerRadius(12)
+        .shadow(color: Color.black.opacity(0.2), radius: 8)
+        .padding(.horizontal, 20)
+        .padding(.top, 8)
+    }
+
     /// 权限被拒绝提示视图
     private var permissionDeniedView: some View {
         VStack(spacing: 20) {
@@ -372,6 +484,96 @@ struct MapTabView: View {
         print("⚙️ [地图] 打开应用设置")
         if let url = URL(string: UIApplication.openSettingsURLString) {
             UIApplication.shared.open(url)
+        }
+    }
+
+    /// 上传当前领地
+    private func uploadCurrentTerritory() async {
+        // 再次检查验证状态
+        guard locationManager.territoryValidationPassed else {
+            showUploadError("领地验证未通过，无法上传")
+            return
+        }
+
+        // 检查是否有数据
+        guard !locationManager.pathCoordinates.isEmpty else {
+            showUploadError("没有可上传的领地数据")
+            return
+        }
+
+        // 开始上传
+        await MainActor.run {
+            isUploading = true
+        }
+
+        do {
+            try await territoryManager.uploadTerritory(
+                coordinates: locationManager.pathCoordinates,
+                area: locationManager.calculatedArea,
+                startTime: locationManager.trackingStartTime ?? Date()
+            )
+
+            // 上传成功
+            await MainActor.run {
+                isUploading = false
+                showValidationBanner = false
+
+                // 显示成功提示
+                uploadResultMessage = "领地登记成功！面积: \(Int(locationManager.calculatedArea))m²"
+                withAnimation {
+                    showUploadResult = true
+                }
+
+                // 停止追踪并重置状态
+                locationManager.stopPathTracking()
+
+                // 3 秒后隐藏成功提示
+                DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+                    withAnimation {
+                        showUploadResult = false
+                        uploadResultMessage = nil
+                    }
+                }
+            }
+
+            // 刷新领地列表（显示新上传的领地）
+            await loadTerritories()
+
+        } catch {
+            // 上传失败
+            await MainActor.run {
+                isUploading = false
+                showUploadError("上传失败: \(error.localizedDescription)")
+            }
+        }
+    }
+
+    /// 显示上传错误
+    private func showUploadError(_ message: String) {
+        uploadResultMessage = message
+        withAnimation {
+            showUploadResult = true
+        }
+
+        // 3 秒后隐藏错误提示
+        DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+            withAnimation {
+                showUploadResult = false
+                uploadResultMessage = nil
+            }
+        }
+    }
+
+    /// 加载所有领地
+    private func loadTerritories() async {
+        do {
+            let loadedTerritories = try await territoryManager.loadAllTerritories()
+            await MainActor.run {
+                territories = loadedTerritories
+            }
+            TerritoryLogger.shared.log("加载了 \(loadedTerritories.count) 个领地", type: .info)
+        } catch {
+            TerritoryLogger.shared.log("加载领地失败: \(error.localizedDescription)", type: .error)
         }
     }
 }
